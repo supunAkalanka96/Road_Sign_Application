@@ -1,79 +1,115 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Button } from 'react-native';
-import * as Location from 'expo-location';
-import axios from 'axios';
+import React, { useState, useEffect, useRef } from "react";
+import { StyleSheet, Text, View, Button, Alert } from "react-native";
+import * as Location from "expo-location";
+import axios from "axios";
+import { locationData } from "./locationData";
+import { Dropdown } from "react-native-element-dropdown";
 
 export default function App()
 {
-  const [location, setLocation] = useState(null);
+  const [locationDescription, setLocationDescription] = useState("ABCDEFG");
+  const [location, setLocation] = useState();
   const [errorMsg, setErrorMsg] = useState(null);
+  const [processing, setProcessing] = useState(false);
 
-  useEffect(() =>
+  const getLocation = async () =>
   {
-    (async () =>
+    setProcessing(true);
+    try
     {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted')
+      const { status } = await Location.requestForegroundPermissionsAsync();
+
+      if (status !== "granted")
       {
-        setErrorMsg('Permission to access location was denied');
+        Alert.alert(
+          "Permission Denied",
+          "Location permission is required to get your location."
+        );
         return;
       }
 
-      let location = await Location.getCurrentPositionAsync({});
-      setLocation(location);
-    })();
-  }, []);
+      const locationData = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = locationData.coords;
 
-  const sendLocationDataToServer = async (locationData) =>
-  {
-    try
-    {
-      const response = await axios.post(' https://b3c6-2402-4000-b280-6332-8845-de9b-6c81-ac47.ngrok-free.app /location/save', locationData);
-      console.log('Location data sent successfully:', response.data);
+      // Replace 'YOUR_BACKEND_URL' with your actual backend URL
+      const apiUrl =
+        "https://9253-2402-4000-b280-6332-5931-8d31-da9b-fd8e.ngrok-free.app/location/save";
+
+      const requestBody = {
+        latitude: latitude,
+        longitude: longitude,
+        description: locationDescription,
+      };
+
+      // Send location data to the backend
+      await axios
+        .post(apiUrl, requestBody)
+        .then((res) =>
+        {
+          console.log("RES::>>>", res);
+          setProcessing(false);
+        })
+        .catch((err) =>
+        {
+          console.error(err);
+          setProcessing(false);
+        });
+
+      // Alert.alert('Location Sent', 'Location data sent to the backend successfully.');
+
+      setLocation(locationData);
     } catch (error)
     {
-      console.error('Error sending location data:', error);
+      setProcessing(false);
+      console.error("Error getting location:", error);
+      Alert.alert("Error", "An error occurred while getting your location.");
     }
   };
 
+  console.log("HGHAFDHA", locationDescription);
   return (
     <View style={styles.container}>
       <Text>Current Location:</Text>
       {errorMsg ? <Text>{errorMsg}</Text> : null}
       {location ? (
         <Text>
-          Latitude: {location.coords.latitude}, Longitude: {location.coords.longitude}
+          Latitude: {location.coords.latitude}, Longitude:{" "}
+          {location.coords.longitude}
         </Text>
       ) : null}
-      <Button
-        title="Get Location"
-        onPress={() =>
+
+      <Text style={{ marginVertical: 20 }}>Select a Description:</Text>
+      <Dropdown
+        style={{ width: 250 }}
+        placeholderStyle={styles.placeholderStyle}
+        selectedTextStyle={{ color: "red", fontSize: 20 }}
+        inputSearchStyle={styles.inputSearchStyle}
+        itemContainerStyle={{ marginVertical: 5 }}
+        data={locationData}
+        search
+        maxHeight={300}
+        labelField="label"
+        valueField="value"
+        placeholder="Select item"
+        searchPlaceholder="Search..."
+        value={locationDescription}
+        onChange={(item) =>
         {
-          setLocation(null);
-          setErrorMsg(null);
-          (async () =>
-          {
-            let { status } = await Location.requestForegroundPermissionsAsync();
-            if (status !== 'granted')
-            {
-              setErrorMsg('Permission to access location was denied');
-              return;
-            }
-
-            let location = await Location.getCurrentPositionAsync({});
-            setLocation(location);
-
-            if (location)
-            {
-              const locationData = {
-                latitude: location.coords.latitude,
-                longitude: location.coords.longitude,
-              };
-              sendLocationDataToServer(locationData);
-            }
-          })();
+          setLocationDescription(item?.value);
+        }}
+        renderItem={(item) =>
+        {
+          return <Text style={styles.textItem}>{item.label}</Text>;
         }}
       />
+
+      <View style={{ marginTop: 40 }}>
+        <Button
+          title="Send Location"
+          onPress={getLocation}
+          disabled={processing}
+        />
+      </View>
     </View>
   );
 }
@@ -81,7 +117,7 @@ export default function App()
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
