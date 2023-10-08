@@ -119,5 +119,12 @@ export const locationData = [
     value: "End of Speed Limit",
     label: "End of Speed Limit",
   },
-
+  {
+    value: "School",
+    label: "School",
+  },
+  {
+    value: "Hospital",
+    label: "Hospital",
+  },
 ];
